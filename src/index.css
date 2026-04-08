@@ -1,0 +1,157 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #10b981;
+  /* Emerald 500 */
+  --primary-light: #ecfdf5;
+  /* Emerald 50 */
+  --primary-dark: #059669;
+  /* Emerald 600 */
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-800: #1f2937;
+  --white: #ffffff;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --radius: 0.75rem;
+}
+
+/* ... middle content ... */
+
+.text-gray-800 {
+  color: var(--gray-800);
+}
+
+.text-green-600 {
+  color: var(--primary-dark);
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+.font-medium {
+  font-weight: 500;
+}
+
+.text-xl {
+  font-size: 1.25rem;
+}
+
+.text-lg {
+  font-size: 1.125rem;
+}
+
+.text-sm {
+  font-size: 0.875rem;
+}
+
+.rounded-xl {
+  border-radius: 0.75rem;
+}
+
+.rounded-full {
+  border-radius: 9999px;
+}
+
+.shadow-sm {
+  box-shadow: var(--shadow-sm);
+}
+
+.shadow {
+  box-shadow: var(--shadow);
+}
+
+.border {
+  border: 1px solid var(--gray-200);
+}
+
+.border-b {
+  border-bottom: 1px solid var(--gray-200);
+}
+
+/* Components */
+.card {
+  background: white;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.5rem;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  cursor: pointer;
+  border: none;
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-dark);
+}
+
+.btn-secondary {
+  background-color: var(--gray-100);
+  color: var(--gray-800);
+}
+
+.btn-secondary:hover {
+  background-color: var(--gray-200);
+}
+
+.btn-danger {
+  background-color: #fee2e2;
+  color: #ef4444;
+}
+
+.btn-danger:hover {
+  background-color: #fca5a5;
+}
+
+/* Grid System */
+.grid {
+  display: grid;
+}
+
+.grid-cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.grid-cols-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.grid-cols-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/* Input Styles */
+input,
+select {
+  width: 100%;
+  padding: 0.5rem;
+  /* px-3 py-2 */
+  border: 1px solid var(--gray-200);
+  border-radius: 0.5rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+input:focus,
+select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-light);
+}
