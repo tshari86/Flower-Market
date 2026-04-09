@@ -664,6 +664,25 @@ const App = (() => {
       const savedPage = sessionStorage.getItem('fmb_page') || 'main';
       currentPage = savedPage;
     }
+
+    // Global Keyboard Handler
+    window.addEventListener('keydown', e => {
+      const isInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
+      
+      // Global Search Shortcut (/ or F1) - if not typing in an input
+      if (!isInput && (e.key === '/' || e.key === 'F1')) {
+        e.preventDefault();
+        const searchBox = document.querySelector('input[id*="search"], input[id*="rep-search"], input[id*="c-search"]');
+        if (searchBox) searchBox.focus();
+      }
+
+      // Close Modals (Esc)
+      if (e.key === 'Escape') {
+        const modalOverlay = document.querySelector('.fm-overlay, .fm-modal-overlay');
+        if (modalOverlay) modalOverlay.remove();
+      }
+    });
+
     render();
   }
   return { init, i18n };

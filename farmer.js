@@ -136,6 +136,14 @@ const FarmerModule = (() => {
     }
 
     _container.querySelector('#fm-clear')?.addEventListener('click', clearSearch);
+
+    // ── Keyboard Shortcuts ──
+    _container.addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.key === 'n') {
+        e.preventDefault();
+        openModal();
+      }
+    });
   }
 
   function clearSearch() {

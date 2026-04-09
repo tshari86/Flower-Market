@@ -190,10 +190,22 @@ const CashReceiveModule = (() => {
 
 const CustomerReportModule = (() => {
   let _container = null, _db = null, tenantId = '';
+  let reportState = {
+    view: 'today', // today, month, custom
+    start: new Date().toISOString().split('T')[0],
+    end: new Date().toISOString().split('T')[0],
+    searchTerm: ''
+  };
 
   function init(container, db) {
     _container = container; _db = db;
     tenantId = _db.currentTenant;
+    
+    // Set default month range if needed
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+    
     renderPage();
   }
 
@@ -201,48 +213,231 @@ const CustomerReportModule = (() => {
     return JSON.parse(sessionStorage.getItem(`customers_${tenantId}`) || '[]');
   }
 
+  function getSales() {
+    return JSON.parse(sessionStorage.getItem(`sales_${tenantId}`) || '[]');
+  }
+  
+  function getReceipts() {
+    return JSON.parse(sessionStorage.getItem(`receipts_${tenantId}`) || '[]');
+  }
+
   function renderPage() {
-    const custs = getCustomers();
+    // Fresh data fetch to ensure all new additions/transactions are captured
+    const tenantId = _db.currentTenant; 
+    const custs = JSON.parse(sessionStorage.getItem(`customers_${tenantId}`) || '[]');
+    const sales = JSON.parse(sessionStorage.getItem(`sales_${tenantId}`) || '[]');
+    const receipts = JSON.parse(sessionStorage.getItem(`receipts_${tenantId}`) || '[]');
+    
+    // Filter data based on reportState
+    const filteredSales = sales.filter(s => s.date >= reportState.start && s.date <= reportState.end);
+    const filteredReceipts = receipts.filter(r => r.date >= reportState.start && r.date <= reportState.end);
+    
+    // Aggregate by customer
+    const reportData = custs.map(c => {
+      const cSales = filteredSales.filter(s => s.customerId === c.id);
+      const cReceipts = filteredReceipts.filter(r => r.customerId === c.id);
+      const salesVol = cSales.reduce((s, x) => s + parseFloat(x.total || 0), 0);
+      const paidVol = cReceipts.reduce((s, x) => s + parseFloat(x.amount || 0), 0);
+      const currentDues = window.CustomerModule ? window.CustomerModule.getDues(c) : 0;
+      
+      return { ...c, salesVol, paidVol, currentDues };
+    });
+
+    // Filter by search term if active
+    const q = reportState.searchTerm.toLowerCase().trim();
+    const finalReportData = reportData.filter(c => 
+      c.name.toLowerCase().includes(q) || 
+      String(c.id).toLowerCase().includes(q)
+    );
+    
+    // Totals derived FROM the filtered report data for perfect sync
+    const totalSalesInRange = finalReportData.reduce((s, x) => s + x.salesVol, 0);
+    const totalPaidInRange = finalReportData.reduce((s, x) => s + x.paidVol, 0);
+    const totalDuesOverall = finalReportData.reduce((s, x) => s + x.currentDues, 0);
+    const netChange = totalSalesInRange - totalPaidInRange;
+
     _container.innerHTML = `
-      <div class="fm-page-header">
-        <h1 class="fm-title">📈 Customer Reports</h1>
-      </div>
-      <div class="fm-summary-grid">
-        <div class="fm-stat-card card-blue">
-          <h3>Total Customers</h3>
-          <p>${custs.length}</p>
+      <div class="fm-page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: #fff; padding: 15px 20px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+        <div style="display: flex; align-items: center; gap: 15px;">
+          <h1 class="fm-title" style="margin:0; font-size: 1.5rem;">📈 ${App.i18n.t('customerReport')}</h1>
+          <div style="height: 24px; width: 2px; background: #e2e8f0;"></div>
+          <p style="color: #64748b; margin: 0; font-size: 0.9rem; font-weight: 600;">${reportState.start} to ${reportState.end}</p>
         </div>
-        <div class="fm-stat-card card-red">
-          <h3>Outstanding Dues</h3>
-          <p>₹${custs.reduce((s, c) => s + CustomerModule.getDues(c), 0).toFixed(2)}</p>
+        
+        <div style="display: flex; align-items: center; gap: 15px;">
+           <div style="display: flex; gap: 4px; background: #f1f5f9; padding: 4px; border-radius: 8px;">
+              <button class="report-tab-btn ${reportState.view === 'today' ? 'active' : ''}" data-view="today" style="padding: 4px 12px; border-radius: 6px; border: none; background: ${reportState.view === 'today' ? '#10b981' : 'transparent'}; color: ${reportState.view === 'today' ? '#fff' : '#475569'}; cursor: pointer; font-size: 0.85rem; font-weight: 700;">Today</button>
+              <button class="report-tab-btn ${reportState.view === 'month' ? 'active' : ''}" data-view="month" style="padding: 4px 12px; border-radius: 6px; border: none; background: ${reportState.view === 'month' ? '#10b981' : 'transparent'}; color: ${reportState.view === 'month' ? '#fff' : '#475569'}; cursor: pointer; font-size: 0.85rem; font-weight: 700;">Month</button>
+           </div>
+           <div style="display: flex; align-items: center; gap: 8px; background: #f8fafc; padding: 6px 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
+              <input type="date" id="rep-start" value="${reportState.start}" style="padding: 2px 5px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem;">
+              <span style="color: #64748b; font-size: 0.8rem;">to</span>
+              <input type="date" id="rep-end" value="${reportState.end}" style="padding: 2px 5px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem;">
+              <button id="apply-range" style="background: #3b82f6; color: #fff; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: bold;">Apply</button>
+           </div>
+           <div style="display: flex; gap: 8px;">
+              <button id="rep-whatsapp" title="WhatsApp Summary" style="width: 32px; height: 32px; border-radius: 8px; border: 1px solid #10b981; background: #fff; color: #10b981; cursor: pointer;">🟢</button>
+              <button id="rep-csv" title="CSV Export" style="width: 32px; height: 32px; border-radius: 8px; border: 1px solid #64748b; background: #fff; color: #64748b; cursor: pointer;">📊</button>
+           </div>
         </div>
       </div>
-      <div class="fm-card animate-fade-in">
-        <table class="fm-table">
-          <thead>
-            <tr>
-              <th>Customer</th><th>Contact</th><th>Credit Limit</th><th>Current Dues</th><th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${custs.map(c => {
-              const dues = CustomerModule.getDues(c);
-              const limit = c.limit || 5000;
-              return `
-                <tr>
-                  <td class="fm-semi-bold">${c.name}</td>
-                  <td>${c.contact}</td>
-                  <td>₹${limit}</td>
-                  <td class="${dues > limit ? 'color-red' : 'color-green'}">₹${dues.toFixed(2)}</td>
-                  <td>${dues > limit ? '<span class="fm-tag-absent">Over Limit</span>' : '<span class="fm-badge-id">Healthy</span>'}</td>
-                </tr>
-              `;
-            }).join('')}
-            ${custs.length === 0 ? '<tr><td colspan="5" class="fm-empty-state">No customer data available.</td></tr>' : ''}
-          </tbody>
-        </table>
+
+      <div class="fm-report-controls" style="display: flex; gap: 15px; align-items: center; margin-bottom: 20px;">
+        <div class="fm-stat-strip" style="flex: 1; display: flex; gap: 10px;">
+          <div style="background: #eff6ff; padding: 8px 15px; border-radius: 8px; border-left: 4px solid #3b82f6; flex: 1;">
+            <div style="font-size: 0.7rem; color: #1e40af; font-weight: 800; text-transform: uppercase;">Sales</div>
+            <div style="font-size: 1.1rem; font-weight: 900; color: #1e3a8a;">₹${totalSalesInRange.toFixed(2)}</div>
+          </div>
+          <div style="background: #ecfdf5; padding: 8px 15px; border-radius: 8px; border-left: 4px solid #10b981; flex: 1;">
+            <div style="font-size: 0.7rem; color: #065f46; font-weight: 800; text-transform: uppercase;">Paid</div>
+            <div style="font-size: 1.1rem; font-weight: 900; color: #064e3b;">₹${totalPaidInRange.toFixed(2)}</div>
+          </div>
+          <div style="background: #fff7ed; padding: 8px 15px; border-radius: 8px; border-left: 4px solid #f97316; flex: 1;">
+            <div style="font-size: 0.7rem; color: #9a3412; font-weight: 800; text-transform: uppercase;">Net</div>
+            <div style="font-size: 1.1rem; font-weight: 900; color: #7c2d12;">₹${(totalSalesInRange - totalPaidInRange).toFixed(2)}</div>
+          </div>
+          <div style="background: #fef2f2; padding: 8px 15px; border-radius: 8px; border-left: 4px solid #ef4444; flex: 1;">
+            <div style="font-size: 0.7rem; color: #991b1b; font-weight: 800; text-transform: uppercase;">Dues</div>
+            <div style="font-size: 1.1rem; font-weight: 900; color: #7f1d1d;">₹${totalDuesOverall.toFixed(2)}</div>
+          </div>
+        </div>
+
+        <div style="width: 300px; position: relative;">
+          <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 0.9rem; color: #10b981;">🔍</span>
+          <input id="rep-search" type="text" placeholder="Search customer ID/name..." value="${reportState.searchTerm}" style="width: 100%; padding: 8px 12px 8px 35px; border: 1px solid #10b981; border-radius: 8px; outline: none; font-size: 0.9rem; font-weight: 600;">
+        </div>
+      </div>
+
+      <div class="fm-full-grid" style="background: #fff; border-radius: 12px; border: 1px solid #f1f5f9; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); overflow: hidden; width: 100%; display: flex; flex-direction: column;">
+        <div style="max-height: 60vh; overflow-y: auto; width: 100%;">
+          <table class="fm-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead style="background: #f8fafc; border-bottom: 2px solid #f1f5f9; position: sticky; top: 0; z-index: 10;">
+              <tr>
+                <th style="padding: 10px 15px; font-size: 0.85rem; background: #f8fafc;">Customer Name</th>
+                <th style="padding: 10px 15px; font-size: 0.85rem; background: #f8fafc;">Sales</th>
+                <th style="padding: 10px 15px; font-size: 0.85rem; background: #f8fafc;">Paid</th>
+                <th style="padding: 10px 15px; font-size: 0.85rem; background: #f8fafc;">Balance</th>
+                <th style="padding: 10px 15px; text-align: right; font-size: 0.85rem; background: #f8fafc;">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${finalReportData.map(c => `
+                  <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.1s; cursor: default;">
+                    <td style="padding: 8px 15px;">
+                      <div style="font-weight: 700; color: #1e293b; font-size: 0.95rem;">${c.name}</div>
+                      <div style="font-size: 0.7rem; color: #64748b;">ID: ${c.id} • ${c.contact}</div>
+                    </td>
+                    <td style="padding: 8px 15px; font-weight: 600; color: #334155; font-size: 0.95rem;">₹${c.salesVol.toFixed(2)}</td>
+                    <td style="padding: 8px 15px; font-weight: 600; color: #10b981; font-size: 0.95rem;">₹${c.paidVol.toFixed(2)}</td>
+                    <td style="padding: 8px 15px; font-weight: 800; color: ${c.currentDues > 0 ? '#ef4444' : '#1e293b'}; font-size: 0.95rem;">₹${c.currentDues.toFixed(2)}</td>
+                    <td style="padding: 8px 15px; text-align: right;">
+                       <button class="send-cust-wa" data-idx="${c.id}" style="background: #25d366; color: white; border: none; width: 28px; height: 28px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem;">📲</button>
+                    </td>
+                  </tr>
+              `).join('')}
+              ${finalReportData.length === 0 ? '<tr><td colspan="5" style="padding: 50px; text-align: center; color: #94a3b8; font-style: italic;">No customer matches found.</td></tr>' : ''}
+            </tbody>
+          </table>
+        </div>
       </div>
     `;
+
+    // ── Listeners ──
+    _container.querySelectorAll('.report-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const view = btn.dataset.view;
+        reportState.view = view;
+        const now = new Date();
+        if (view === 'today') {
+           reportState.start = reportState.end = now.toISOString().split('T')[0];
+        } else if (view === 'month') {
+           reportState.start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+           reportState.end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+        }
+        renderPage();
+      });
+    });
+
+    _container.querySelector('#apply-range').addEventListener('click', () => {
+       reportState.view = 'custom';
+       reportState.start = _container.querySelector('#rep-start').value;
+       reportState.end = _container.querySelector('#rep-end').value;
+       renderPage();
+    });
+
+    _container.querySelector('#rep-search').addEventListener('input', (e) => {
+        reportState.searchTerm = e.target.value;
+        renderPage();
+        // Maintain focus
+        _container.querySelector('#rep-search').focus();
+        _container.querySelector('#rep-search').setSelectionRange(e.target.value.length, e.target.value.length);
+    });
+
+    _container.querySelector('#rep-csv').addEventListener('click', () => {
+       // --- Section 1: Summaries ---
+       const summaryHeaders = ['SECTION: CUSTOMER SUMMARIES', '', '', '', '', ''];
+       const rowHeaders = ['Customer Name', 'ID', 'Initial Dues', 'Sales in Period', 'Paid in Period', 'Final Balance'];
+       const summaryRows = finalReportData.map(c => [
+         c.name, 
+         c.id, 
+         parseFloat(c.initialDues || 0).toFixed(2), 
+         c.salesVol.toFixed(2), 
+         c.paidVol.toFixed(2), 
+         c.currentDues.toFixed(2)
+       ]);
+
+       // --- Section 2: Detailed Transaction Log ---
+       const logHeaders = ['', '', '', '', '', ''];
+       const logTitle = ['SECTION: DETAILED TRANSACTION LOG (EXACT VALUES)', '', '', '', '', ''];
+       const logRowHeaders = ['Date', 'Customer Name', 'Type', 'ID/Ref', 'Amount (₹)', 'Method/Note'];
+       
+       const transactionLog = [];
+       // Add all sales
+       filteredSales.forEach(s => {
+          if (finalReportData.some(c => c.id === s.customerId)) {
+             transactionLog.push([s.date, (s.customerName || '—'), 'SALE', (s.id || '—'), parseFloat(s.total || 0).toFixed(2), (s.flowerType || '—')]);
+          }
+       });
+       // Add all receipts
+       filteredReceipts.forEach(r => {
+          if (finalReportData.some(c => c.id === r.customerId)) {
+             transactionLog.push([r.date, (r.customerName || '—'), 'RECEIPT', (r.id || '—'), parseFloat(r.amount || 0).toFixed(2), (r.notes || '—')]);
+          }
+       });
+       // Sort log by date
+       transactionLog.sort((a, b) => a[0].localeCompare(b[0]));
+
+       const csvRows = [
+          summaryHeaders,
+          rowHeaders,
+          ...summaryRows,
+          logHeaders, // empty separator
+          logTitle,
+          logRowHeaders,
+          ...transactionLog
+       ];
+
+       const csvContent = "data:text/csv;charset=utf-8," + csvRows.map(e => e.join(",")).join("\n");
+       const link = document.createElement("a");
+       link.setAttribute("href", encodeURI(csvContent));
+       link.setAttribute("download", `Customer_Report_${reportState.start}_to_${reportState.end}.csv`);
+       document.body.appendChild(link);
+       link.click();
+       link.remove();
+    });
+
+    _container.querySelector('#rep-whatsapp').addEventListener('click', () => {
+       const text = `📊 *Market Report Summary*%0APeriod: ${reportState.start} to ${reportState.end}%0A---------------------------%0ATotal Sales: ₹${totalSalesInRange.toFixed(2)}%0ACash Received: ₹${totalPaidInRange.toFixed(2)}%0A---------------------------%0AKeep Growing! 🌿`;
+       window.open(`https://wa.me/?text=${text}`, '_blank');
+     });
+
+     _container.querySelectorAll('.send-cust-wa').forEach(btn => {
+        btn.addEventListener('click', () => {
+           const c = reportData.find(x => x.id === btn.dataset.idx);
+           const text = `🌸 *Payment Reminder*%0AHello *${c.name}*,%0AYour current outstanding balance is *₹${c.currentDues.toFixed(2)}*.%0APlease clear your dues at the earliest. Thank you!`;
+           window.open(`https://wa.me/91${c.contact}?text=${text}`, '_blank');
+        });
+     });
   }
 
   return { init };

@@ -28,8 +28,18 @@ const PurchaseModule = (() => {
   }
 
   function getFlowers() {
-    const data = sessionStorage.getItem(`flowers_${tenantId}`);
-    return data ? JSON.parse(data) : [];
+    const list = JSON.parse(sessionStorage.getItem(`flowers_${tenantId}`) || '[]');
+    if (list.length === 0) {
+      return [
+        { name: 'Rose', createdAt: '2026-01-01' },
+        { name: 'Jasmine', createdAt: '2026-01-01' },
+        { name: 'Marigold', createdAt: '2026-01-01' },
+        { name: 'Crossandra', createdAt: '2026-01-01' },
+        { name: 'Lotus', createdAt: '2026-01-01' },
+        { name: 'Mullai', createdAt: '2026-01-01' }
+      ];
+    }
+    return list;
   }
 
   function getBuyers() {
@@ -70,12 +80,10 @@ const PurchaseModule = (() => {
         <!-- Middle Form: Add Items Area -->
         <div class="bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl p-6 mb-8" style="background: #f8fafc; border: 2px dashed #e2e8f0; border-radius: 1rem; padding: 1.5rem; margin-bottom: 2rem;">
             <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-end" style="display: grid; grid-template-columns: repeat(12, 1fr); gap: 1.5rem; align-items: end;">
-                <div style="grid-column: span 3;">
+                <div style="grid-column: span 3; position: relative;">
                     <label class="fm-label text-xs font-bold text-gray-500 uppercase">Flower Variety</label>
-                    <select id="i-flower" class="fm-input" style="width: 100%; padding: 0.75rem; border: 2px solid #fff; border-radius: 0.75rem; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
-                        <option value="">Select Flower Variety</option>
-                        ${flowers.map(f => `<option value="${f.name}">${f.name}</option>`).join('')}
-                    </select>
+                    <input type="text" id="i-flower-input" class="fm-input" placeholder="Search Flower..." autocomplete="off" style="width: 100%; padding: 0.75rem; border: 2px solid #fff; border-radius: 0.75rem; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); outline: none;">
+                    <div id="i-flower-dropdown" style="display: none; position: absolute; z-index: 50; width: 100%; max-height: 200px; overflow-y: auto; background: #fff; border: 2px solid #f1f5f9; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-top: 5px;"></div>
                 </div>
                 <div style="grid-column: span 3;">
                     <label class="fm-label text-xs font-bold text-gray-500 uppercase">Weight</label>
@@ -190,6 +198,46 @@ const PurchaseModule = (() => {
         renderFarmerDropdown(e.target.value);
         dropdown.style.display = 'block';
     });
+
+    // Custom Flower Dropdown Logic
+    const flowerInput = _container.querySelector('#i-flower-input');
+    const flowerDropdown = _container.querySelector('#i-flower-dropdown');
+
+    function renderFlowerDropdown(filterText = '') {
+        flowerDropdown.innerHTML = '';
+        const filtered = flowers.filter(f => f.name.toLowerCase().includes(filterText.toLowerCase()));
+        if (filtered.length === 0) {
+            flowerDropdown.innerHTML = '<div style="padding: 0.75rem; color: #94a3b8; text-align: center;">No flowers found</div>';
+            return;
+        }
+        filtered.forEach(f => {
+            const div = document.createElement('div');
+            div.textContent = f.name;
+            div.style.cssText = 'padding: 0.75rem; cursor: pointer; border-bottom: 1px solid #f1f5f9; transition: background 0.2s; color: #334155; font-weight: 500; font-size: 0.875rem;';
+            div.addEventListener('mouseenter', () => div.style.background = '#f8fafc');
+            div.addEventListener('mouseleave', () => div.style.background = 'transparent');
+            div.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                flowerInput.value = f.name;
+                flowerDropdown.style.display = 'none';
+            });
+            flowerDropdown.appendChild(div);
+        });
+    }
+
+    flowerInput.addEventListener('focus', () => {
+        renderFlowerDropdown(flowerInput.value);
+        flowerDropdown.style.display = 'block';
+    });
+
+    flowerInput.addEventListener('blur', () => {
+        flowerDropdown.style.display = 'none';
+    });
+
+    flowerInput.addEventListener('input', (e) => {
+        renderFlowerDropdown(e.target.value);
+        flowerDropdown.style.display = 'block';
+    });
     const iQty = _container.querySelector('#i-qty');
     const iRate = _container.querySelector('#i-rate');
     const iTotalDisplay = _container.querySelector('#i-total-display');
@@ -206,8 +254,33 @@ const PurchaseModule = (() => {
     iQty.addEventListener('input', updateItemTotal);
     iRate.addEventListener('input', updateItemTotal);
 
+    // ── Row Keyboard Navigation ──
+    flowerInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (flowerDropdown.style.display === 'none' || flowerDropdown.innerHTML === '') {
+           iQty.focus();
+        }
+      }
+    });
+
+    iQty.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        iRate.focus();
+      }
+    });
+
+    iRate.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addItemBtn.click();
+        setTimeout(() => flowerInput.focus(), 10);
+      }
+    });
+
     addItemBtn.addEventListener('click', () => {
-      const flower = _container.querySelector('#i-flower').value;
+      const flower = flowerInput.value;
       const qty = parseFloat(iQty.value);
       const rate = parseFloat(iRate.value);
 
@@ -217,7 +290,7 @@ const PurchaseModule = (() => {
       }
 
       currentItems.push({ flowerType: flower, qty, rate, total: qty * rate });
-      _container.querySelector('#i-flower').value = '';
+      flowerInput.value = '';
       iQty.value = '';
       iRate.value = '';
       iTotalDisplay.textContent = '₹0.00';

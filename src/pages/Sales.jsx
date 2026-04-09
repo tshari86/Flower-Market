@@ -1,18 +1,21 @@
 
 import React, { useState, useEffect } from 'react';
 import { Search, ShoppingCart, User, Plus, Trash2, Printer, Save } from 'lucide-react';
-import { getBuyers, saveSale, getFarmers } from '../utils/storage';
+import { getBuyers, saveSale, getFarmers, getProducts } from '../utils/storage';
 
-const FLOWER_TYPES = [
-    'Rose / ரோஜா',
-    'Malligai / மல்லிகை',
-    'Samanthi / சாமந்தி',
-    'Mullai / முல்லை',
-    'Arali / அரளி',
-    'Tulip / டியூலிப்'
-];
+  // Dynamic flowers will be fetched from storage
 
 const Sales = () => {
+    const [flowers, setFlowers] = useState([]);
+    
+    useEffect(() => {
+        const stored = getProducts();
+        if (stored.length === 0) {
+            setFlowers(['Rose', 'Jasmine', 'Marigold', 'Crossandra', 'Lotus', 'Mullai']);
+        } else {
+            setFlowers(stored.map(f => f.name));
+        }
+    }, []);
     const [buyers, setBuyers] = useState([]);
     const [farmers, setFarmers] = useState([]);
     const [cart, setCart] = useState([]);
@@ -119,17 +122,19 @@ const Sales = () => {
                         <form onSubmit={addItem} className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
                             <div className="md:col-span-3">
                                 <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">Flower Type</label>
-                                <select
+                                <input 
+                                    list="flower-list"
+                                    id="flower-type"
+                                    className="w-full px-4 py-3 rounded-lg border-2 border-emerald-100 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all outline-none bg-emerald-50/30"
+                                    placeholder="Select or Type Flower"
                                     value={currentItem.flowerType}
-                                    onChange={e => setCurrentItem({ ...currentItem, flowerType: e.target.value })}
-                                    className="w-full p-3 border-2 border-white rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
-                                    required
-                                >
-                                    <option value="">Select Flower Type</option>
-                                    {FLOWER_TYPES.map(type => (
-                                        <option key={type} value={type}>{type.split(' / ')[0]}</option>
+                                    onChange={(e) => setCurrentItem({...currentItem, flowerType: e.target.value})}
+                                />
+                                <datalist id="flower-list">
+                                    {flowers.map(f => (
+                                        <option key={f} value={f} />
                                     ))}
-                                </select>
+                                </datalist>
                             </div>
                             <div className="md:col-span-3">
                                 <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">எடை / அளவு</label>

@@ -7,7 +7,7 @@ const FlowerModule = (() => {
   function init(container, db) {
     _container = container;
     _db = db;
-    tenantId = sessionStorage.getItem('tenantId') || _db.currentTenant;
+    tenantId = _db.currentTenant;
     loadData();
     renderPage();
   }

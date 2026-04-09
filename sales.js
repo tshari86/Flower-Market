@@ -24,7 +24,19 @@ const SalesModule = (() => {
   }
 
   function getFlowers() {
-     return JSON.parse(sessionStorage.getItem(`flowers_${tenantId}`) || '[]');
+    const list = JSON.parse(sessionStorage.getItem(`flowers_${tenantId}`) || '[]');
+    if (list.length === 0) {
+      // Fallback for better UX: Common flowers
+      return [
+        { name: 'Rose', createdAt: '2026-01-01' },
+        { name: 'Jasmine', createdAt: '2026-01-01' },
+        { name: 'Marigold', createdAt: '2026-01-01' },
+        { name: 'Crossandra', createdAt: '2026-01-01' },
+        { name: 'Lotus', createdAt: '2026-01-01' },
+        { name: 'Mullai', createdAt: '2026-01-01' }
+      ];
+    }
+    return list;
   }
 
   function renderPage() {
@@ -38,89 +50,115 @@ const SalesModule = (() => {
         <p style="color: #64748b; margin-top: -5px;">Log details of flowers sold to customers.</p>
       </div>
 
-      <div class="fm-card animate-fade-in" style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom: 25px;">
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
-          <!-- Customer Selection -->
-          <div class="fm-field">
-            <label style="display: block; font-weight: bold; color: #334155; margin-bottom: 8px;">${App.i18n.t('customer')}</label>
-            <div style="position: relative;">
-               <input type="text" id="s-cust-input" placeholder="${App.i18n.t('searchHint')}" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; outline: none;">
-               <div id="s-cust-results" style="position: absolute; top: 100%; left: 0; width: 100%; background: white; border: 1px solid #e2e8f0; border-radius: 8px; z-index: 100; display: none; max-height: 200px; overflow-y: auto; box-shadow: 0 10px 15px rgba(0,0,0,0.1);"></div>
-               <input type="hidden" id="s-cust-id">
+      <div class="fm-split-layout" style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; align-items: start;">
+        
+        <!-- LEFT SIDE: Entry Form -->
+        <div class="fm-entry-side fm-card-simple animate-fade-in" style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); border: 1px solid #f1f5f9;">
+          <h2 style="font-size: 1.1rem; color: #1e8a4a; font-weight: 800; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.3rem;">📝</span> ${App.i18n.t('newPurchaseEntry')}
+          </h2>
+
+          <div style="display: flex; flex-direction: column; gap: 20px;">
+            <!-- Customer Selection -->
+            <div class="fm-field">
+              <label style="display: block; font-weight: bold; color: #64748b; margin-bottom: 8px; font-size: 0.85rem; text-transform: uppercase;">${App.i18n.t('customer')}</label>
+              <div style="position: relative;">
+                 <input type="text" id="s-cust-input" placeholder="${App.i18n.t('searchHint')}" style="width: 100%; padding: 12px; border: 2px solid #f1f5f9; border-radius: 10px; outline: none; background: #f8fafc; font-size: 1rem;">
+                 <div id="s-cust-results" style="position: absolute; top: 100%; left: 0; width: 100%; background: white; border: 1px solid #e2e8f0; border-radius: 8px; z-index: 100; display: none; max-height: 200px; overflow-y: auto; box-shadow: 0 10px 15px rgba(0,0,0,0.1);"></div>
+                 <input type="hidden" id="s-cust-id">
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+              <!-- Date Selection -->
+              <div class="fm-field">
+                <label style="display: block; font-weight: bold; color: #64748b; margin-bottom: 8px; font-size: 0.85rem; text-transform: uppercase;">${App.i18n.t('saleDate')}</label>
+                <input type="date" id="s-date" value="${today}" style="width: 100%; padding: 12px; border: 2px solid #f1f5f9; border-radius: 10px; outline: none; background: #f8fafc;">
+              </div>
+              <!-- Flower Variety -->
+              <div class="fm-field">
+                <label style="display: block; font-weight: bold; color: #64748b; margin-bottom: 8px; font-size: 0.85rem; text-transform: uppercase;">${App.i18n.t('flowerVariety')}</label>
+                <div style="position: relative;">
+                   <input type="text" id="s-flower-input" placeholder="${App.i18n.t('selectFlower')}" style="width: 100%; padding: 12px; border: 2px solid #f1f5f9; border-radius: 10px; outline: none; background: #f8fafc;">
+                   <div id="s-flower-results" style="position: absolute; top: 100%; left: 0; width: 100%; background: white; border: 1px solid #e2e8f0; border-radius: 8px; z-index: 100; display: none; max-height: 200px; overflow-y: auto; box-shadow: 0 10px 15px rgba(0,0,0,0.1);"></div>
+                </div>
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid #f1f5f9; margin-top: 10px;">
+              <div class="fm-field">
+                <label style="display: block; font-size: 0.75rem; font-weight: bold; color: #64748b; margin-bottom: 5px; text-transform: uppercase;">${App.i18n.t('weightQty')}</label>
+                <input type="number" id="s-weight" placeholder="0.00" step="0.01" style="width: 100%; padding: 10px; border: 2px solid #fff; border-radius: 8px; outline: none; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+              </div>
+              <div class="fm-field">
+                <label style="display: block; font-size: 0.75rem; font-weight: bold; color: #64748b; margin-bottom: 5px; text-transform: uppercase;">${App.i18n.t('rate')}</label>
+                <input type="number" id="s-price" placeholder="0.00" step="0.01" style="width: 100%; padding: 10px; border: 2px solid #fff; border-radius: 8px; outline: none; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+              </div>
+              <div class="fm-field">
+                <label style="display: block; font-size: 0.75rem; font-weight: bold; color: #64748b; margin-bottom: 5px; text-transform: uppercase;">${App.i18n.t('total')}</label>
+                <div id="s-row-total-display" style="width: 100%; padding: 10px; background: #f1f5f9; border-radius: 8px; font-weight: 800; color: #1e8a4a; font-size: 1rem;">₹0.00</div>
+              </div>
+            </div>
+
+            <div style="margin-top: 10px;">
+               <button id="s-add-item" style="width: 100%; height: 50px; background: #1e8a4a; color: white; border: none; border-radius: 12px; font-weight: 800; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.2s; box-shadow: 0 4px 10px rgba(30, 138, 74, 0.2);">
+                 <span>＋</span> ${App.i18n.t('addNew')}
+               </button>
             </div>
           </div>
-          <!-- Date Selection -->
-          <div class="fm-field">
-            <label style="display: block; font-weight: bold; color: #334155; margin-bottom: 8px;">${App.i18n.t('saleDate')}</label>
-            <input type="date" id="s-date" value="${today}" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; outline: none;">
-          </div>
         </div>
 
-        <!-- Entry Row -->
-        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1.2fr 50px; gap: 15px; align-items: end; background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid #f1f5f9;">
-          <div class="fm-field">
-            <label style="display: block; font-size: 0.85rem; font-weight: bold; color: #64748b; margin-bottom: 5px;">${App.i18n.t('flowerVariety')}</label>
-            <div style="position: relative;">
-               <input type="text" id="s-flower-input" placeholder="${App.i18n.t('selectFlower')}" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; outline: none;">
-               <div id="s-flower-results" style="position: absolute; top: 100%; left: 0; width: 100%; background: white; border: 1px solid #e2e8f0; border-radius: 8px; z-index: 100; display: none; max-height: 200px; overflow-y: auto; box-shadow: 0 10px 15px rgba(0,0,0,0.1);"></div>
+        <!-- RIGHT SIDE: Live Preview & History -->
+        <div class="fm-preview-side animate-fade-in" style="display: flex; flex-direction: column; gap: 20px;">
+
+          <!-- Batch Table -->
+          <div class="fm-card-simple" style="background: white; border-radius: 12px; border: 1px solid #f1f5f9; box-shadow: 0 4px 10px rgba(0,0,0,0.03); overflow: hidden; flex: 1;">
+            <div style="padding: 15px 20px; background: #f8fafc; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+               <h3 style="margin: 0; font-size: 0.9rem; font-weight: 800; color: #334155;">Current Batch Items</h3>
+               <span id="s-item-count" style="background: #1e8a4a; color: white; font-size: 0.7rem; padding: 2px 8px; border-radius: 99px; font-weight: bold;">0 Items</span>
+            </div>
+            <div style="max-height: 300px; overflow-y: auto;">
+              <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                <thead style="background: #fff; border-bottom: 1px solid #f1f5f9; position: sticky; top: 0; z-index: 10;">
+                  <tr>
+                    <th style="padding: 12px 15px; color: #64748b; font-size: 0.75rem; text-transform: uppercase;">${App.i18n.t('flower')}</th>
+                    <th style="padding: 12px 15px; color: #64748b; font-size: 0.75rem; text-transform: uppercase; text-align: center;">${App.i18n.t('qty')}</th>
+                    <th style="padding: 12px 15px; color: #64748b; font-size: 0.75rem; text-transform: uppercase; text-align: right;">${App.i18n.t('total')}</th>
+                    <th style="padding: 12px 15px; text-align: right;"></th>
+                  </tr>
+                </thead>
+                <tbody id="s-batch-body">
+                  <tr><td colspan="4" style="padding: 30px; text-align: center; color: #94a3b8; font-style: italic; font-size: 0.85rem;">${App.i18n.t('noItemsAdded')}</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Total Bar -->
+            <div style="padding: 20px; background: #f1f5f9; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+               <div>
+                  <div style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; font-weight: 800; margin-bottom: 3px;">Total Quantity</div>
+                  <div id="s-total-qty" style="font-weight: 900; color: #334155; font-size: 1.1rem;">0.00</div>
+               </div>
+               <div style="text-align: right;">
+                  <div style="font-size: 0.7rem; color: #1e8a4a; text-transform: uppercase; font-weight: 800; margin-bottom: 3px;">Grand Total</div>
+                  <div id="s-grand-total" style="font-weight: 900; color: #1e8a4a; font-size: 1.5rem;">₹0.00</div>
+               </div>
             </div>
           </div>
-          <div class="fm-field">
-            <label style="display: block; font-size: 0.85rem; font-weight: bold; color: #64748b; margin-bottom: 5px;">${App.i18n.t('weightQty')}</label>
-            <input type="number" id="s-weight" placeholder="e.g. 10" step="0.01" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; outline: none;">
+
+          <!-- Action Buttons -->
+          <div style="display: flex; gap: 12px;">
+             <button id="s-submit" style="flex: 1; background: #1e8a4a; color: #fff; border: none; padding: 15px; border-radius: 12px; font-weight: 900; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.2s;">
+                🚀 ${App.i18n.t('submitSales')}
+             </button>
+             <div style="display: flex; gap: 8px;">
+               <button id="s-print" title="Print Bill" style="width: 50px; height: 50px; border: 2px solid #3b82f6; border-radius: 12px; background: #f0f7ff; color: #3b82f6; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">🖨️</button>
+               <button id="s-whatsapp" title="Send via WhatsApp" style="width: 50px; height: 50px; border: 2px solid #22c55e; border-radius: 12px; background: #f0fdf4; color: #22c55e; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">🟢</button>
+             </div>
           </div>
-          <div class="fm-field">
-            <label style="display: block; font-size: 0.85rem; font-weight: bold; color: #64748b; margin-bottom: 5px;">${App.i18n.t('rate')}</label>
-            <input type="number" id="s-price" placeholder="e.g. 80" step="0.01" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; outline: none;">
-          </div>
-          <div class="fm-field">
-            <label style="display: block; font-size: 0.85rem; font-weight: bold; color: #64748b; margin-bottom: 5px;">${App.i18n.t('total')}</label>
-            <input type="text" id="s-row-total" value="0.00" disabled style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f1f5f9; font-weight: bold; color: #1e8a4a;">
-          </div>
-          <button id="s-add-item" style="height: 42px; width: 42px; border: 2px solid #1e8a4a; border-radius: 50%; background: #fff; color: #1e8a4a; font-size: 1.5rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">＋</button>
+
         </div>
 
-        <!-- Batch Table -->
-        <div style="margin-top: 25px; border: 1px solid #f1f5f9; border-radius: 12px; overflow: hidden;">
-          <table style="width: 100%; border-collapse: collapse; text-align: left;">
-            <thead style="background: #f8fafc; border-bottom: 1px solid #f1f5f9;">
-              <tr>
-                <th style="padding: 12px 15px; color: #64748b; font-size: 0.85rem;">${App.i18n.t('flower')}</th>
-                <th style="padding: 12px 15px; color: #64748b; font-size: 0.85rem;">${App.i18n.t('qty')}</th>
-                <th style="padding: 12px 15px; color: #64748b; font-size: 0.85rem;">${App.i18n.t('rate')}</th>
-                <th style="padding: 12px 15px; color: #64748b; font-size: 0.85rem;">${App.i18n.t('total')}</th>
-                <th style="padding: 12px 15px; color: #64748b; font-size: 0.85rem; text-align: right;">${App.i18n.t('actions')}</th>
-              </tr>
-            </thead>
-            <tbody id="s-batch-body">
-              <tr><td colspan="5" style="padding: 30px; text-align: center; color: #94a3b8; font-style: italic;">${App.i18n.t('noItemsAdded')}</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Summary -->
-        <div style="margin-top: 25px; display: flex; flex-direction: column; align-items: flex-start;">
-           <div style="background: #f8fafc; padding: 15px 25px; border-radius: 12px; border: 1px solid #f1f5f9; min-width: 250px;">
-              <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                 <span style="color: #64748b; font-weight: 600;">${App.i18n.t('total')} ${App.i18n.t('qty')}</span>
-                 <span id="s-total-qty" style="font-weight: bold; color: #334155;">0.00</span>
-              </div>
-              <div style="display: flex; justify-content: space-between; border-top: 1px solid #e2e8f0; padding-top: 8px;">
-                 <span style="color: #1e8a4a; font-weight: 800; font-size: 1.1rem;">${App.i18n.t('netAmount')}</span>
-                 <span id="s-grand-total" style="font-weight: 800; color: #1e8a4a; font-size: 1.1rem;">₹0.00</span>
-              </div>
-           </div>
-        </div>
-
-        <!-- Action Buttons -->
-        <div style="margin-top: 30px; display: flex; gap: 15px; align-items: center;">
-           <button id="s-submit" style="background: #1e8a4a; color: #fff; border: none; padding: 12px 30px; border-radius: 99px; font-weight: 800; font-size: 1rem; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.2s;">
-              ${App.i18n.t('submitSales')}
-           </button>
-           <button id="s-print" title="Print Bill" style="width: 45px; height: 45px; border: 2px solid #3b82f6; border-radius: 50%; background: #fff; color: #3b82f6; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">🖨️</button>
-           <button id="s-whatsapp" title="Send via WhatsApp" style="width: 45px; height: 45px; border: 2px solid #22c55e; border-radius: 50%; background: #fff; color: #22c55e; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">🟢</button>
-           <button id="s-csv" title="Download CSV" style="width: 45px; height: 45px; border: 2px solid #64748b; border-radius: 50%; background: #fff; color: #64748b; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">📊</button>
-        </div>
       </div>
     `;
 
@@ -132,11 +170,20 @@ const SalesModule = (() => {
     const flowerResults = _container.querySelector('#s-flower-results');
     const wInp = _container.querySelector('#s-weight');
     const pInp = _container.querySelector('#s-price');
-    const tInp = _container.querySelector('#s-row-total');
     const addItemBtn = _container.querySelector('#s-add-item');
     const submitBtn = _container.querySelector('#s-submit');
 
-    // ── Customer Search Logic ──
+    // \u2500\u2500 Row Total (live calc) \u2500\u2500
+    const rowTotalDisplay = _container.querySelector('#s-row-total-display');
+    const calcRowTotal = () => {
+      const w = parseFloat(wInp.value) || 0;
+      const p = parseFloat(pInp.value) || 0;
+      if (rowTotalDisplay) rowTotalDisplay.textContent = `\u20b9${(w * p).toFixed(2)}`;
+    };
+    wInp.addEventListener('input', calcRowTotal);
+    pInp.addEventListener('input', calcRowTotal);
+
+    // \u2500\u2500 Customer Search Logic \u2500\u2500
     custInput.addEventListener('input', (e) => {
       const q = e.target.value.toLowerCase().trim();
       if (!q) { custResults.style.display = 'none'; return; }
@@ -150,6 +197,7 @@ const SalesModule = (() => {
               custInput.value = item.dataset.name;
               custIdHidden.value = item.dataset.id;
               custResults.style.display = 'none';
+              updatePreview();
            });
         });
       } else {
@@ -164,7 +212,6 @@ const SalesModule = (() => {
       
       const filtered = flowers.filter(f => f.name.toLowerCase().includes(q));
       if (filtered.length) {
-        // Use App.i18n.t(f.name.toLowerCase()) as label, but keep f.name as raw fallback
         flowerResults.innerHTML = filtered.map(f => {
           const translated = App.i18n.t(f.name.toLowerCase());
           const display = translated !== f.name.toLowerCase() ? translated : f.name;
@@ -175,6 +222,7 @@ const SalesModule = (() => {
            item.addEventListener('click', () => {
               flowerInput.value = item.dataset.name;
               flowerResults.style.display = 'none';
+              updatePreview();
            });
         });
       } else {
@@ -192,14 +240,30 @@ const SalesModule = (() => {
       }
     });
 
-    // ── Row Total Calculation ──
-    const calcRow = () => {
-      const w = parseFloat(wInp.value) || 0;
-      const p = parseFloat(pInp.value) || 0;
-      tInp.value = (w * p).toFixed(2);
-    };
-    wInp.addEventListener('input', calcRow);
-    pInp.addEventListener('input', calcRow);
+    // ── Row Keyboard Navigation ──
+    flowerInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (flowerResults.style.display === 'none' || flowerResults.innerHTML === '') {
+           wInp.focus();
+        }
+      }
+    });
+
+    wInp.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        pInp.focus();
+      }
+    });
+
+    pInp.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addItemBtn.click();
+        setTimeout(() => flowerInput.focus(), 10);
+      }
+    });
 
     // ── Batch Management ──
     addItemBtn.addEventListener('click', () => {
@@ -210,7 +274,7 @@ const SalesModule = (() => {
 
       currentBatch.push({ name: flower, weight, price, total: weight * price });
       renderBatchTable();
-      flowerInput.value = ''; wInp.value = ''; pInp.value = ''; tInp.value = '0.00';
+      flowerInput.value = ''; wInp.value = ''; pInp.value = '';
     });
 
     submitBtn.addEventListener('click', () => {
@@ -255,7 +319,6 @@ const SalesModule = (() => {
        window.open(`https://wa.me/91${cust.contact}?text=${text}`, '_blank');
     });
 
-    _container.querySelector('#s-csv').addEventListener('click', downloadBatchCSV);
   }
 
   function renderBatchTable() {
@@ -264,7 +327,7 @@ const SalesModule = (() => {
     const grandTotal = _container.querySelector('#s-grand-total');
     
     if (!currentBatch.length) {
-      body.innerHTML = `<tr><td colspan="5" style="padding:30px; text-align:center; color:#94a3b8; font-style:italic;">${App.i18n.t('noItemsAdded')}</td></tr>`;
+      body.innerHTML = `<tr><td colspan="4" style="padding:30px; text-align:center; color:#94a3b8; font-style:italic;">${App.i18n.t('noItemsAdded')}</td></tr>`;
       totalQty.textContent = '0.00';
       grandTotal.textContent = '₹0.00';
       return;
@@ -273,9 +336,8 @@ const SalesModule = (() => {
     body.innerHTML = currentBatch.map((i, idx) => `
       <tr style="border-bottom: 1px solid #f1f5f9;">
         <td style="padding: 12px 15px; font-weight: 600; color: #334155;">${App.i18n.t(i.name.toLowerCase()) || i.name}</td>
-        <td style="padding: 12px 15px; color: #475569;">${i.weight}</td>
-        <td style="padding: 12px 15px; color: #475569;">₹${i.price.toFixed(2)}</td>
-        <td style="padding: 12px 15px; font-weight: bold; color: #1e8a4a;">₹${i.total.toFixed(2)}</td>
+        <td style="padding: 12px 15px; color: #475569; text-align: center;">${i.weight} <span style="font-size:0.75rem; color:#94a3b8;">@ ₹${i.price.toFixed(2)}</span></td>
+        <td style="padding: 12px 15px; font-weight: bold; color: #1e8a4a; text-align: right;">₹${i.total.toFixed(2)}</td>
         <td style="padding: 12px 15px; text-align: right;">
           <button class="s-del-row" data-idx="${idx}" style="background: none; border: none; cursor: pointer; font-size: 1.1rem; filter: grayscale(1);">🗑️</button>
         </td>
@@ -293,6 +355,7 @@ const SalesModule = (() => {
     const weightSum = currentBatch.reduce((s, i) => s + i.weight, 0);
     totalQty.textContent = weightSum.toFixed(2);
     grandTotal.textContent = `₹${total.toFixed(2)}`;
+    _container.querySelector('#s-item-count').textContent = `${currentBatch.length} Items`;
   }
 
   function downloadBatchCSV() {

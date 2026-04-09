@@ -87,6 +87,14 @@ const CustomerModule = (() => {
       if (file) { importCustomers(file); e.target.value = ''; }
     });
     _container.querySelector('#add-cust-btn').addEventListener('click', () => openModal());
+
+    // ── Keyboard Shortcuts ──
+    _container.addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.key === 'n') {
+        e.preventDefault();
+        openModal();
+      }
+    });
   }
 
   function renderList(query = '') {
